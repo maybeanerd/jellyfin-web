@@ -1942,7 +1942,21 @@ export class PlaybackManager {
             const apiClient = ServerConnections.getApiClient(firstItem.ServerId);
             const startSeasonId = firstItem.Type === 'Season' ? items[options.startIndex || 0].Id : undefined;
 
+            // TODO update here
+
             const seasonId = (startSeasonId && items.length === 1) ? startSeasonId : undefined;
+
+            const initialEpisode = options.shuffle ? undefined : await apiClient.getEpisodes(firstItem.SeriesId || firstItem.Id, {
+                IsVirtualUnaired: false,
+                IsMissing: false,
+                SeasonId: seasonId,
+                limit: 1,
+                SortBy: 'IsUnplayed',
+                UserId: apiClient.getCurrentUserId()
+                // Fields: ['Chapters', 'Trickplay']
+            });
+
+            console.log('initial episode', initialEpisode);
 
             const episodesResult = await apiClient.getEpisodes(firstItem.SeriesId || firstItem.Id, {
                 IsVirtualUnaired: false,
@@ -1950,9 +1964,12 @@ export class PlaybackManager {
                 SeasonId: seasonId,
                 // default to first 100 episodes if no season was specified to avoid loading too large payloads
                 limit: seasonId ? undefined : 100,
-                SortBy: options.shuffle ? 'Random' : undefined,
+                SortBy: (options.shuffle ? 'Random,' : undefined),
                 UserId: apiClient.getCurrentUserId(),
-                Fields: ['Chapters', 'Trickplay']
+                Fields: ['Chapters', 'Trickplay'],
+                startItemId:
+                    initialEpisode?.Items?.at(0)?.Id
+                    ?? undefined
             });
 
             if (options.shuffle) {
@@ -1997,6 +2014,8 @@ export class PlaybackManager {
         function getEpisodes(firstItem, options) {
             return new Promise(function (resolve, reject) {
                 const apiClient = ServerConnections.getApiClient(firstItem.ServerId);
+
+                // TODO update here
 
                 const { SeriesId, SeasonId } = firstItem;
                 if (!SeriesId) {
