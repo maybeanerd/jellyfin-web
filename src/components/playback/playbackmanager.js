@@ -1950,13 +1950,27 @@ export class PlaybackManager {
                 IsVirtualUnaired: false,
                 IsMissing: false,
                 SeasonId: seasonId,
-                limit: 1,
+                limit: 10,
                 SortBy: 'IsUnplayed',
                 UserId: apiClient.getCurrentUserId()
                 // Fields: ['Chapters', 'Trickplay']
             });
 
             console.log('initial episode', initialEpisode);
+            console.log('initial episode name', initialEpisode?.Items.at(0)?.Name);
+
+            const initialEpisodeIsPlayed = options.shuffle ? undefined : await apiClient.getEpisodes(firstItem.SeriesId || firstItem.Id, {
+                IsVirtualUnaired: false,
+                IsMissing: false,
+                SeasonId: seasonId,
+                limit: 10,
+                SortBy: 'IsPlayed',
+                UserId: apiClient.getCurrentUserId()
+                // Fields: ['Chapters', 'Trickplay']
+            });
+
+            console.log('initial episode is played', initialEpisodeIsPlayed);
+            console.log('initial episode name is played', initialEpisodeIsPlayed?.Items.at(0)?.Name);
 
             const episodesResult = await apiClient.getEpisodes(firstItem.SeriesId || firstItem.Id, {
                 IsVirtualUnaired: false,
