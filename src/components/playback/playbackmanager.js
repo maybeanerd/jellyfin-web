@@ -1942,37 +1942,26 @@ export class PlaybackManager {
             const apiClient = ServerConnections.getApiClient(firstItem.ServerId);
             const startSeasonId = firstItem.Type === 'Season' ? items[options.startIndex || 0].Id : undefined;
 
-            // TODO update here
-
             const seasonId = (startSeasonId && items.length === 1) ? startSeasonId : undefined;
+            const seriesId = firstItem.SeriesId || firstItem.Id;
 
-            const initialEpisode = options.shuffle ? undefined : await apiClient.getEpisodes(firstItem.SeriesId || firstItem.Id, {
-                IsVirtualUnaired: false,
-                IsMissing: false,
-                SeasonId: seasonId,
-                limit: 10,
-                SortBy: 'IsUnplayed',
-                UserId: apiClient.getCurrentUserId()
-                // Fields: ['Chapters', 'Trickplay']
-            });
+            let startItemId;
 
-            console.log('initial episode', initialEpisode);
-            console.log('initial episode name', initialEpisode?.Items.at(0)?.Name);
+            // Start from a specific (the next unwatched) episode if we want to watch in order and have not chosen a specific season
+            if (!options.shuffle && !seasonId ) {
+                const initialUnplayedEpisode = await apiClient.getNextUpEpisodes({
+                    seriesId,
 
-            const initialEpisodeIsPlayed = options.shuffle ? undefined : await apiClient.getEpisodes(firstItem.SeriesId || firstItem.Id, {
-                IsVirtualUnaired: false,
-                IsMissing: false,
-                SeasonId: seasonId,
-                limit: 10,
-                SortBy: 'IsPlayed',
-                UserId: apiClient.getCurrentUserId()
-                // Fields: ['Chapters', 'Trickplay']
-            });
+                    SeasonId: seasonId,
+                    limit: 1,
+                    UserId: apiClient.getCurrentUserId()
+                });
 
-            console.log('initial episode is played', initialEpisodeIsPlayed);
-            console.log('initial episode name is played', initialEpisodeIsPlayed?.Items.at(0)?.Name);
 
-            const episodesResult = await apiClient.getEpisodes(firstItem.SeriesId || firstItem.Id, {
+                startItemId = initialUnplayedEpisode?.Items?.at(0)?.Id;
+            }
+
+            const episodesResult = await apiClient.getEpisodes(seriesId, {
                 IsVirtualUnaired: false,
                 IsMissing: false,
                 SeasonId: seasonId,
@@ -1981,9 +1970,7 @@ export class PlaybackManager {
                 SortBy: (options.shuffle ? 'Random,' : undefined),
                 UserId: apiClient.getCurrentUserId(),
                 Fields: ['Chapters', 'Trickplay'],
-                startItemId:
-                    initialEpisode?.Items?.at(0)?.Id
-                    ?? undefined
+                startItemId
             });
 
             if (options.shuffle) {
@@ -2029,9 +2016,7 @@ export class PlaybackManager {
             return new Promise(function (resolve, reject) {
                 const apiClient = ServerConnections.getApiClient(firstItem.ServerId);
 
-                // TODO update here
-
-                const { SeriesId, SeasonId } = firstItem;
+                const { SeriesId, Id } = firstItem;
                 if (!SeriesId) {
                     resolve(null);
                     return;
@@ -2042,8 +2027,8 @@ export class PlaybackManager {
                     IsMissing: false,
                     UserId: apiClient.getCurrentUserId(),
                     Fields: ['Chapters', 'Trickplay'],
-                    // limit loading episodes of the current season to avoid loading too large payload
-                    SeasonId
+                    // limit to loading 100 episodes to avoid loading too large payload
+                    startItemId: Id
                 }).then(function (episodesResult) {
                     resolve(filterEpisodes(episodesResult, firstItem, options));
                 }, reject);
